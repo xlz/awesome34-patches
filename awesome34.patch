@@ -1,0 +1,175 @@
+diff -rup awesome-3.4.15.orig/awesomeConfig.cmake awesome-3.4.15/awesomeConfig.cmake
+--- awesome-3.4.15.orig/awesomeConfig.cmake	2013-02-11 08:50:21.000000000 -0500
++++ awesome-3.4.15/awesomeConfig.cmake	2014-02-18 02:24:12.994907947 -0500
+@@ -10,10 +10,10 @@ project(${PROJECT_AWE_NAME} C)
+ 
+ set(CMAKE_BUILD_TYPE RELEASE)
+ 
+-option(WITH_DBUS "build with D-BUS" ON)
++option(WITH_DBUS "build with D-BUS" OFF)
+ option(GENERATE_MANPAGES "generate manpages" ON)
+ option(COMPRESS_MANPAGES "compress manpages" ON)
+-option(GENERATE_LUADOC "generate luadoc" ON)
++option(GENERATE_LUADOC "generate luadoc" OFF)
+ 
+ # {{{ CFLAGS
+ add_definitions(-std=gnu99 -ggdb3 -fno-strict-aliasing -Wall -Wextra
+@@ -21,7 +21,7 @@ add_definitions(-std=gnu99 -ggdb3 -fno-s
+     -Wsign-compare -Wunused -Wno-unused-parameter -Wuninitialized -Winit-self
+     -Wpointer-arith -Wredundant-decls -Wformat-nonliteral
+     -Wno-format-zero-length -Wmissing-format-attribute -Wmissing-prototypes
+-    -Wstrict-prototypes)
++    -Wstrict-prototypes -ffast-math)
+ # }}}
+ 
+ # {{{ Endianness
+@@ -54,7 +54,7 @@ a_find_program(ASCIIDOC_EXECUTABLE ascii
+ a_find_program(XMLTO_EXECUTABLE xmlto FALSE)
+ a_find_program(GZIP_EXECUTABLE gzip FALSE)
+ # lua documentation
+-a_find_program(LUA_EXECUTABLE lua FALSE)
++a_find_program(LUA_EXECUTABLE luajit FALSE)
+ a_find_program(LUADOC_EXECUTABLE luadoc FALSE)
+ # theme graphics
+ a_find_program(CONVERT_EXECUTABLE convert TRUE)
+@@ -62,8 +62,8 @@ a_find_program(CONVERT_EXECUTABLE conver
+ include(FindDoxygen)
+ # pkg-config
+ include(FindPkgConfig)
+-# lua 5.1
+-include(FindLua51)
++# luajit 2.0.0
++include(FindLUAJIT.cmake)
+ # }}}
+ 
+ # {{{ Check if documentation can be build
+@@ -194,7 +194,7 @@ else()
+ endif()
+ 
+ # Error check
+-if(NOT LUA51_FOUND AND NOT LUA50_FOUND) # This is a workaround to a cmake bug
++if(NOT LUA51_FOUND AND NOT LUA50_FOUND AND NOT LUAJIT_FOUND) # This is a workaround to a cmake bug
+     message(FATAL_ERROR "lua library not found")
+ endif()
+ 
+@@ -202,12 +202,12 @@ set(AWESOME_REQUIRED_LDFLAGS
+     ${AWESOME_COMMON_REQUIRED_LDFLAGS}
+     ${AWESOME_REQUIRED_LDFLAGS}
+     ${LIB_EV}
+-    ${LUA_LIBRARIES})
++    ${LUAJIT_LIBRARIES})
+ 
+ set(AWESOME_REQUIRED_INCLUDE_DIRS
+     ${AWESOME_COMMON_REQUIRED_INCLUDE_DIRS}
+     ${AWESOME_REQUIRED_INCLUDE_DIRS}
+-    ${LUA_INCLUDE_DIR})
++    ${LUAJIT_INCLUDE_DIR})
+ # }}}
+ 
+ # {{{ Optional libraries
+Only in awesome-3.4.15: .build-zotac-zboxid82-x86_64-linux-gnu-4.8
+diff -rup awesome-3.4.15.orig/CMakeLists.txt awesome-3.4.15/CMakeLists.txt
+--- awesome-3.4.15.orig/CMakeLists.txt	2014-02-18 13:07:13.000000000 -0500
++++ awesome-3.4.15/CMakeLists.txt	2014-02-18 02:03:11.760905679 -0500
+@@ -85,7 +85,6 @@ set(AWE_SRCS
+ set(AWE_MAN_SRCS
+     ${SOURCE_DIR}/manpages/awesome.1.txt
+     ${SOURCE_DIR}/manpages/awsetbg.1.txt
+-    ${SOURCE_DIR}/manpages/awesome-client.1.txt
+     ${SOURCE_DIR}/manpages/awesomerc.5.txt)
+ set(AWE_MAN_LANGS it es fr de ru)
+ 
+@@ -327,7 +326,6 @@ endif()
+ # {{{ Installation
+ install(TARGETS ${PROJECT_AWE_NAME} RUNTIME DESTINATION bin)
+ install(FILES "utils/awsetbg" DESTINATION bin PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+-install(FILES "utils/awesome-client" DESTINATION bin PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+ install(DIRECTORY ${BUILD_DIR}/lib DESTINATION ${AWESOME_DATA_PATH}
+     PATTERN "*.in" EXCLUDE)
+ install(FILES ${AWE_CONF_FILE_DEFAULT} DESTINATION ${AWESOME_SYSCONFDIR}
+Only in awesome-3.4.15/debian: awesome
+Only in awesome-3.4.15/debian: awesome.debhelper.log
+Only in awesome-3.4.15/debian: awesome.postinst.debhelper
+Only in awesome-3.4.15/debian: awesome.postrm.debhelper
+Only in awesome-3.4.15/debian: awesome.prerm.debhelper
+Only in awesome-3.4.15/debian: awesome.substvars
+diff -rup awesome-3.4.15.orig/debian/changelog awesome-3.4.15/debian/changelog
+--- awesome-3.4.15.orig/debian/changelog	2013-02-17 04:45:23.000000000 -0500
++++ awesome-3.4.15/debian/changelog	2014-02-18 02:25:42.507336808 -0500
+@@ -1,3 +1,9 @@
++awesome (3.4.15-1+local.3) unstable; urgency=low
++
++  * luajit bugfix
++
++ -- Julien Danjou <acid@debian.org>  Sun, 17 Feb 2013 10:44:55 +0100
++
+ awesome (3.4.15-1) unstable; urgency=low
+ 
+   * New upstream release (Closes: #700607)
+diff -rup awesome-3.4.15.orig/debian/control awesome-3.4.15/debian/control
+--- awesome-3.4.15.orig/debian/control	2013-02-17 04:44:30.000000000 -0500
++++ awesome-3.4.15/debian/control	2014-02-18 02:03:23.136959442 -0500
+@@ -11,7 +11,7 @@ Vcs-Browser: http://git.debian.org/?p=us
+ Package: awesome
+ Architecture: any
+ Recommends: x11-xserver-utils, rlwrap, feh
+-Depends: ${shlibs:Depends}, ${misc:Depends}, menu, dbus-x11
++Depends: ${shlibs:Depends}, ${misc:Depends}, menu
+ Provides: x-window-manager
+ Description: highly configurable X window manager
+  awesome manages windows dynamically in floating or tiled layouts. It is
+Only in awesome-3.4.15/debian: files
+diff -rup awesome-3.4.15.orig/event.c awesome-3.4.15/event.c
+--- awesome-3.4.15.orig/event.c	2013-02-11 08:50:21.000000000 -0500
++++ awesome-3.4.15/event.c	2014-02-21 13:48:10.864338834 -0500
+@@ -138,11 +138,23 @@ event_handle_button(xcb_button_press_eve
+     const int nb_screen = xcb_setup_roots_length(xcb_get_setup(globalconf.connection));
+     client_t *c;
+     wibox_t *wibox;
++    static xcb_button_t grabbed_button;
+ 
+     globalconf.timestamp = ev->time;
+ 
++    if(globalconf.mousegrabber == LUA_REFNIL)
++        grabbed_button = 0;
++    /* Ignore irrelevant buttons during button triggered mouse grab. */
++    if(grabbed_button && ev->detail != grabbed_button)
++        return;
++    if(ev->response_type == XCB_BUTTON_RELEASE && ev->detail == grabbed_button)
++        ev->detail = 0;
+     if(event_handle_mousegrabber(ev->root_x, ev->root_y, 1 << (ev->detail - 1 + 8)))
++    {
++        if(globalconf.mousegrabber == LUA_REFNIL)
++            grabbed_button = 0;
+         return;
++    }
+ 
+     /* ev->state is
+      * button status (8 bits) + modifiers status (8 bits)
+@@ -199,8 +211,11 @@ event_handle_button(xcb_button_press_eve
+             if(xutil_screen_get(globalconf.connection, screen)->root == ev->event)
+             {
+                 event_button_callback(ev, &globalconf.buttons, 0, 0, NULL);
+-                return;
++                goto out;
+             }
++out:
++    if(globalconf.mousegrabber != LUA_REFNIL)
++        grabbed_button = ev->detail;
+ }
+ 
+ static void
+Only in awesome-3.4.15: FindLUAJIT.cmake
+Only in awesome-3.4.15: obj-x86_64-linux-gnu
+diff -rup awesome-3.4.15.orig/screen.c awesome-3.4.15/screen.c
+--- awesome-3.4.15.orig/screen.c	2013-02-11 08:50:21.000000000 -0500
++++ awesome-3.4.15/screen.c	2014-02-18 02:07:23.374096533 -0500
+@@ -386,7 +386,7 @@ luaA_screen_module_index(lua_State *L)
+ static int
+ luaA_screen_tags(lua_State *L)
+ {
+-    screen_t *s = luaL_checkudata(L, 1, "screen");
++    screen_t *s = lua_touserdata(L, 1);
+ 
+     if(lua_gettop(L) == 2)
+     {
